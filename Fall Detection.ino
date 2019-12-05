@@ -1,3 +1,28 @@
+/**
+ * The MIT License (MIT)
+ * 
+ * Author: Hongtai Liu (lht856@foxmail.com)
+ * 
+ * Copyright (C) 2019  Seeed Technology Co.,Ltd. 
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 #include <Dps310.h>
 
 Dps310 Dps310PressureSensor = Dps310();
@@ -12,51 +37,60 @@ void setup()
 
 void loop()
 {
-  float pressure1[10];
-  float pressure2[10];
+  float Detection_array[10];
   uint8_t oversampling = 7;
   int16_t ret;
-  Serial.println();
   int i;
-  int k=10;
-  int value1;
-  int value2;
-  
-  ret = Dps310PressureSensor.measurePressureOnce(pressure1[0], oversampling);
-  int sum1=pressure1[0];
-  for(i=1;i<9;i++)
-{
-  ret = Dps310PressureSensor.measurePressureOnce(pressure1[i], oversampling);
-  if (pressure1[i]-pressure1[i-1]< 5)
-   {sum1+=pressure1[i];}
-  else
-   {k-=1;}
-}
-  value1=sum1/k;
-  delay(100);
-
-  ret = Dps310PressureSensor.measurePressureOnce(pressure2[0], oversampling);
-  int sum2 =pressure2[0];
-   for(i=1;i<9;i++)
-{
-  ret = Dps310PressureSensor.measurePressureOnce(pressure2[i], oversampling);
-  if (pressure2[i]-pressure2[i-1]< 5)
-  sum2+=pressure2[i];
-  else
-  k-=1;
-}
-  value2=sum2/k;
-  
-  if (ret != 0)
+  int size = 10;
+  int state1;
+  int state2;
+/*In the following two cycles, the pressure state at the pre and post time was detected respectively.
+  The sampling quantity was 10. The values with large deviation were removed, and the average value was calculated.*/
+      ret = Dps310PressureSensor.measurePressureOnce(Detection_array[0], oversampling);
+      state1 = Detection_array[0];
+ for (i = 1; i < 9; i++)
   {
+     ret = Dps310PressureSensor.measurePressureOnce(Detection_array[i], oversampling);
+       if (Detection_array[i] - Detection_array[i - 1] < 5)
+      {
+        state1 += Detection_array[i];
+      }
+      else
+      {
+        size -= 1;
+      }
+  } 
+ state1 = state1 / size;
+ delay(100);
+
+
+      ret = Dps310PressureSensor.measurePressureOnce(Detection_array[0], oversampling);
+      state2 = Detection_array[0];
+ for (i = 1; i < 9; i++)
+  {
+      ret = Dps310PressureSensor.measurePressureOnce(Detection_array[i], oversampling);
+      if (Detection_array[i] - Detection_array[i - 1] < 5)
+      {
+        state2 += Detection_array[i];
+      }
+      else
+      {
+        size -= 1;
+      }
+  }
+  state2 = state2 / size;
+  
+ if (ret != 0)
+   {
     Serial.print("FAIL! ret = ");
     Serial.println(ret);
-  }
-  else if(value2-value1>4)
-  {
-    Serial.print("You fell down. Do you need help?");
-    delay(5000);
    }
-  else  
-    Serial.print("It's ok!");
+/*Calculate the difference in air pressure to determine if you fall*/
+    else if (state2 - state1 > 4)
+     {
+      Serial.println("You fell down. Do you need help?");
+      delay(5000);
+     }
+    else
+      Serial.println("It's ok!");
 }
